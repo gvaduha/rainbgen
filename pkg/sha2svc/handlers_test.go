@@ -5,6 +5,7 @@ import (
 	"net/http"
 	. "net/http"
 	"testing"
+	"time"
 )
 
 func createTestRepo() (repo ServiceRepository) {
@@ -87,23 +88,20 @@ func TestProcessHashRequestSavedStatuses(t *testing.T) {
 
 	hash := "ee89026a6c5603c51b4504d218ac60f6874b7750"
 
-	// correct save and process
+	// correct save
 	handler(&w, createPostRequest(correctReq))
 	res, err := repo.Fetcher.GetHashResult(hash)
+	if err != nil || res.Status != InProgress {
+		t.Error("Status of request should be in progress")
+	}
+
+	// correct save and process
+	handler(&w, createPostRequest(correctReq))
+	time.Sleep(time.Second)
+	res, err = repo.Fetcher.GetHashResult(hash)
 	if err != nil || res.Status != Finished {
 		t.Error("Status of request should be finished")
 	}
-
-	// in progress via break in hasher
-	defer func() {
-		recover()
-		res, err = repo.Fetcher.GetHashResult(hash)
-		if err != nil || res.Status != InProgress {
-			t.Error("Status of request should be in progress")
-		}
-	}()
-	repo.Hasher = &brokenHasher{}
-	handler(&w, createPostRequest(correctReq))
 }
 
 /*
